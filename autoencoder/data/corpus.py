@@ -4,26 +4,9 @@
 from dataclasses import dataclass
 
 from omegaconf import MISSING, SI
-from speechcorpusy import load_preset # pyright: ignore [reportMissingTypeStubs]; bacause of library
 from speechcorpusy.interface import ConfCorpus # pyright: ignore [reportMissingTypeStubs]; bacause of library
-
-from .dataset import CorpusItems
-
-
-"""
-(delele here when template is used)
-
-[Design Notes - Corpus split]
-    Split criteria is different in each corpus.
-    Some audio corpus could need speaking-style split, but others would not need it.
-    As a result, splitting logit is corpus-dependent, and splitting code become huge.
-    For this reason, splitting logic is separated as a module here.
-
-[Design Notes - Returns]
-    Dataset do NOT have common Init interface because of its nature (e.g. no way to know even how many corpus it consumes).
-    Splitted corpus is consumed by the datasets, so whole splitted output also do not have the interface.
-    For this reason, splitter return/output is Dataset-dependet.
-"""
+import torchvision as tv                       # pyright: ignore [reportMissingTypeStubs]; bacause of library
+import torch
 
 
 @dataclass
@@ -45,7 +28,7 @@ class ConfCorpora:
     n_val: int = MISSING
     n_test: int = MISSING
 
-def prepare_corpora(conf: ConfCorpora) -> tuple[CorpusItems, CorpusItems, CorpusItems]:
+def prepare_corpora(conf: ConfCorpora) -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Instantiate corpuses and split them for datasets.
 
     Returns - CorpusItems for train/val/test
@@ -53,24 +36,17 @@ def prepare_corpora(conf: ConfCorpora) -> tuple[CorpusItems, CorpusItems, Corpus
 
     # Instantiation
     ## No needs of content init. It is a duty of consumer (Dataset).
-    corpus_train, corpus_val, corpus_test = load_preset(conf=conf.train), load_preset(conf=conf.val), load_preset(conf=conf.test)
+    assert conf.train.root is not None
+    assert conf.val.root   is not None
+    assert conf.train.name == "MNIST", f"Currently not supporting '{conf.train.name}' corpus."
+    assert conf.val.name   == "MNIST", f"Currently not supporting '{conf.train.name}' corpus."
+    assert conf.test.name  == "MNIST", f"Currently not supporting '{conf.train.name}' corpus."
+    corpus_train   = tv.datasets.MNIST(root=conf.train.root, train=True,  download=conf.train.download, transform=tv.transforms.ToTensor())
+    corpus_valtest = tv.datasets.MNIST(root=conf.val.root,   train=False, download=conf.val.download,   transform=tv.transforms.ToTensor())
 
     # Split
-    ## e.g. Index-based split
-    val_test = conf.n_val+conf.n_test
-    items_train = corpus_train.get_identities()[:-val_test]
-    items_val = corpus_val.get_identities()[-val_test:-conf.n_test]
-    items_test = corpus_test.get_identities()[-conf.n_test:]
-    ## e.g. Speaker-based split
-    # if conf.name == "JVS":
-    #     speakers_val = ["jvs095", "jvs096", "jvs098"]
-    # else:
-    #     speakers_val = []
-    # items_val = list(filter(lambda item_id: item_id.speaker in speakers_val, corpus_val.get_identities()))
+    #                                                 label  0    1    2    3    4    5    6    7    8    9
+    corpus_val  = torch.utils.data.Subset(corpus_valtest, [  3,   2,   1,  18,   4,   8,  11,   0,  61,   7])
+    corpus_test = torch.utils.data.Subset(corpus_valtest, [ 69,  74,  72,  63,  65, 102,  66,  64,  84,  62])
 
-    # CorpusItem-nize
-    corpus_items_train: CorpusItems = (corpus_train, list(map(lambda item: (item, corpus_train.get_item_path(item)), items_train)))
-    corpus_items_val:   CorpusItems = (corpus_val,   list(map(lambda item: (item,   corpus_val.get_item_path(item)), items_val)))
-    corpus_items_test:  CorpusItems = (corpus_test,  list(map(lambda item: (item,  corpus_test.get_item_path(item)), items_test)))
-
-    return corpus_items_train, corpus_items_val, corpus_items_test
+    return corpus_train, corpus_val, corpus_test

@@ -11,8 +11,8 @@ from torch.optim.lr_scheduler import StepLR
 import lightning as L                       # pyright: ignore [reportMissingTypeStubs]
 from omegaconf import MISSING
 
-from .domain import HogeFugaBatch
-from .data.domain import Piyo
+from .domain import ImageNumBatch
+from .data.domain import Image
 from .data.transform import ConfTransform, augment, collate, load_raw, preprocess
 from .networks.network import Network, ConfNetwork
 
@@ -47,45 +47,41 @@ class Model(L.LightningModule):
         self._conf = conf
         self._net = Network(conf.net)
 
-    def forward(self, batch: HogeFugaBatch): # pyright: ignore [reportIncompatibleMethodOverride] ; pylint: disable=arguments-differ
+    def forward(self, batch: ImageNumBatch): # pyright: ignore [reportIncompatibleMethodOverride] ; pylint: disable=arguments-differ
         """(PL API) Run inference toward a batch.
         """
-        hoge, _, _ = batch
+        image, _ = batch
 
-        # Inference :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        return self._net.generate(hoge)
+        # Inference :: (Batch, C=1, W, H) -> (Batch, C=1, W, H)
+        return self._net.generate(image)
 
     # Typing of PL step API is poor. It is typed as `(self, *args, **kwargs)`.
-    def training_step(self, batch: HogeFugaBatch): # pyright: ignore [reportIncompatibleMethodOverride] ; pylint: disable=arguments-differ
+    def training_step(self, batch: ImageNumBatch): # pyright: ignore [reportIncompatibleMethodOverride] ; pylint: disable=arguments-differ
         """(PL API) Train the model with a batch.
         """
 
-        hoge, fuga_gt, _ = batch
+        image_gt, _ = batch
 
-        # Forward :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        fuga_pred = self._net(hoge)
+        # Forward :: (Batch, C=1, W, H) -> (Batch, C=1, W, H)
+        image_pred = self._net(image_gt)
 
         # Loss
-        loss = F.l1_loss(fuga_pred, fuga_gt)
+        loss = F.mse_loss(image_gt, image_pred)
 
         self.log('loss', loss) #type: ignore ; because of PyTorch-Lightning
         return {"loss": loss}
 
-    def validation_step(self, batch: HogeFugaBatch, batch_idx: int): # pyright: ignore [reportIncompatibleMethodOverride] ; pylint: disable=arguments-differ,unused-argument
+    def validation_step(self, batch: ImageNumBatch, batch_idx: int): # pyright: ignore [reportIncompatibleMethodOverride] ; pylint: disable=arguments-differ,unused-argument
         """(PL API) Validate the model with a batch.
         """
 
-        i_pred, o_gt, _ = batch
+        image_gt, _ = batch
 
-        # Forward :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        o_pred_fwd = self._net(i_pred)
-
-        # Inference :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        ## Usecase: Autoregressive model (`o_pred_fwd` for teacher-forcing, `o_pred_inf` for AR generation)
-        # o_pred_inf = self.net.generate(i_pred)
+        # Forward :: (Batch, C=1, W, H) -> (Batch, C=1, W, H)
+        image_pred = self._net(image_gt)
 
         # Loss
-        loss_fwd = F.l1_loss(o_pred_fwd, o_gt)
+        loss_fwd = F.mse_loss(image_gt, image_pred)
 
         # Logging
         ## Audio
@@ -121,7 +117,7 @@ class Model(L.LightningModule):
     #     """(PL API) Run prediction with a batch. If not provided, predict_step == forward."""
     #     return pred
 
-    def sample(self) -> Piyo:
+    def sample(self) -> Image:
         """Acquire sample input toward preprocess."""
 
         # Audio Example (librosa is not handled by this template)
@@ -130,14 +126,14 @@ class Model(L.LightningModule):
 
         return load_raw(self._conf.transform.load, path)
 
-    def load(self, path: Path) -> Piyo:
+    def load(self, path: Path) -> Image:
         """Load raw inputs.
         Args:
             path - Path to the input.
         """
         return load_raw(self._conf.transform.load, path)
 
-    def preprocess(self, piyo: Piyo, to_device: str | None = None) -> HogeFugaBatch:
+    def preprocess(self, piyo: Image, to_device: str | None = None) -> ImageNumBatch:
         """Preprocess raw inputs into model inputs for inference."""
 
         conf = self._conf.transform

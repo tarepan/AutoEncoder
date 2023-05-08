@@ -13,8 +13,8 @@ from speechdatasety.helper.archive import try_to_acquire_archive_contents, save_
 from speechdatasety.helper.adress import dataset_adress                                 # pyright: ignore [reportMissingTypeStubs]
 from speechdatasety.helper.access import generate_saver_loader                          # pyright: ignore [reportMissingTypeStubs]
 
-from ..domain import HogeFugaBatch
-from .domain import HogeFuga_, HogeFugaDatum
+from ..domain import ImageNumBatch
+from .domain import ImageNum_, ImageNumDatum
 from .transform import ConfTransform, load_raw, preprocess, augment, collate
 
 
@@ -65,7 +65,7 @@ class ConfHogeFugaDataset:
     attr1: int = MISSING
     transform: ConfTransform = ConfTransform()
 
-class HogeFugaDataset(Dataset[HogeFugaDatum]):
+class HogeFugaDataset(Dataset[ImageNumDatum]):
     """The Hoge/Fuga dataset from the corpus.
     """
     def __init__(self, conf: ConfHogeFugaDataset, items: CorpusItems):
@@ -87,7 +87,7 @@ class HogeFugaDataset(Dataset[HogeFugaDatum]):
         self._adress_archive, self._path_contents = dataset_adress(
             conf.adress_data_root, self._corpus.__class__.__name__, "HogeFuga", exp_specifier
         )
-        self._save_hogefuga, self._load_hogefuga = generate_saver_loader(HogeFuga_, ["hoge", "fuga"], self._path_contents)
+        self._save_hogefuga, self._load_hogefuga = generate_saver_loader(ImageNum_, ["hoge", "fuga"], self._path_contents)
 
         # Deploy dataset contents
         ## Try to 'From pre-generated dataset archive'
@@ -118,7 +118,7 @@ class HogeFugaDataset(Dataset[HogeFugaDatum]):
 
         print("Generated new dataset.")
 
-    def __getitem__(self, n: int) -> HogeFugaDatum:
+    def __getitem__(self, n: int) -> ImageNumDatum:
         """(API) Load the n-th datum from the dataset with tranformation.
         """
         item_id = self._items[n][0]
@@ -127,6 +127,6 @@ class HogeFugaDataset(Dataset[HogeFugaDatum]):
     def __len__(self) -> int:
         return len(self._items)
 
-    def collate_fn(self, items: list[HogeFugaDatum]) -> HogeFugaBatch:
+    def collate_fn(self, items: list[ImageNumDatum]) -> ImageNumBatch:
         """(API) datum-to-batch function."""
         return collate(items)

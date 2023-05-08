@@ -7,7 +7,7 @@ from torch import Tensor
 import torch.nn as nn
 from omegaconf import MISSING, SI
 
-from ..domain import HogeBatched
+from ..domain import ImageBatched
 from .child import Child, ConfChild
 
 
@@ -35,30 +35,30 @@ class Network(nn.Module):
         self._child = Child(conf.child)
 
     # Typing of PyTorch forward API is poor.
-    def forward(self, hoge: HogeBatched) -> Tensor: # pyright: ignore [reportIncompatibleMethodOverride]
+    def forward(self, image: ImageBatched) -> Tensor: # pyright: ignore [reportIncompatibleMethodOverride]
         """(PT API) Forward a batch.
 
         Arguments:
-            hoge - Input Hoge
+            image :: (B, C=1, W, H) - Input image
         Returns:
-            o_pred :: (Batch, T, Feat=dim_o) - Prediction
+            o_pred :: (B, C=1, W, H) - Reconstructed image
         """
 
-        # :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        o_pred = self._child(hoge)
+        # :: (B, C=1, W, H) -> (B, C=1, W, H)
+        o_pred = self._child(image)
 
         return o_pred
 
-    def generate(self, hoge: HogeBatched) -> Tensor:
+    def generate(self, image: ImageBatched) -> Tensor:
         """Run inference with a batch.
 
         Arguments:
-            hoge - Input Hoge
+            image :: (B, C=1, W, H) - Input image
         Returns:
-            o_pred :: (Batch, T, Feat=dim_o) - Prediction
+            o_pred :: (B, C=1, W, H) - Reconstructed image
         """
 
-        # :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        o_pred = self._child(hoge)
+        # :: (B, C=1, W, H) -> (B, C=1, W, H)
+        o_pred = self._child(image)
 
         return o_pred

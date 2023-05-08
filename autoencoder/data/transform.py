@@ -8,8 +8,8 @@ import numpy as np
 from omegaconf import MISSING
 from torch import from_numpy, stack # pyright: ignore [reportUnknownVariableType] ; because of PyTorch ; pylint: disable=no-name-in-module
 
-from ..domain import FugaBatched, HogeBatched, HogeFugaBatch, LenFuga
-from .domain import FugaDatum, HogeDatum, HogeFuga, HogeFugaDatum, Piyo, Hoge, Fuga
+from ..domain import NumBatched, ImageBatched, ImageNumBatch
+from .domain import NumDatum, ImageDatum, ImageNum, ImageNumDatum, Image, Num, Fuga
 
 
 # [Data transformation]
@@ -38,12 +38,12 @@ class ConfLoad:
     """
     sampling_rate: int = MISSING
 
-def load_raw(conf: ConfLoad, path: Path) -> Piyo:
+def load_raw(conf: ConfLoad, path: Path) -> Image:
     """Load raw data 'piyo' from the adress."""
 
     # Audio Example (librosa is not handled by this template)
     import librosa # pyright: ignore [reportMissingImports, reportUnknownVariableType] ; pylint: disable=import-outside-toplevel,import-error
-    piyo: Piyo = librosa.load(path, sr=conf.sampling_rate, mono=True)[0] # pyright: ignore [reportUnknownMemberType]
+    piyo: Image = librosa.load(path, sr=conf.sampling_rate, mono=True)[0] # pyright: ignore [reportUnknownMemberType]
 
     return piyo
 
@@ -59,11 +59,11 @@ class ConfPiyo2Hoge:
     """
     amp: float = MISSING
 
-def piyo_to_hoge(conf: ConfPiyo2Hoge, piyo: Piyo) -> Hoge:
+def piyo_to_hoge(conf: ConfPiyo2Hoge, piyo: Image) -> Num:
     """Convert piyo to hoge.
     """
     # Amplification :: (T,) -> (T,)
-    hoge: Hoge = piyo * conf.amp
+    hoge: Num = piyo * conf.amp
 
     return hoge
 
@@ -77,7 +77,7 @@ class ConfPiyo2Fuga:
     """
     div: float = MISSING
 
-def piyo_to_fuga(conf: ConfPiyo2Fuga, piyo: Piyo) -> Fuga:
+def piyo_to_fuga(conf: ConfPiyo2Fuga, piyo: Image) -> Fuga:
     """Convert piyo to fuga.
     """
     # Division :: (T,) -> (T,)
@@ -95,7 +95,7 @@ class ConfPreprocess:
     piyo2hoge: ConfPiyo2Hoge = ConfPiyo2Hoge()
     piyo2fuga: ConfPiyo2Fuga = ConfPiyo2Fuga()
 
-def preprocess(conf: ConfPreprocess, raw: Piyo) -> HogeFuga:
+def preprocess(conf: ConfPreprocess, raw: Image) -> ImageNum:
     """Preprocessing (raw_to_item) - Process raw data into item.
 
     Piyo -> Hoge & Fuga
@@ -114,7 +114,7 @@ class ConfAugment:
     """
     len_clip: int = MISSING
 
-def augment(conf: ConfAugment, hoge_fuga: HogeFuga) -> HogeFugaDatum:
+def augment(conf: ConfAugment, hoge_fuga: ImageNum) -> ImageNumDatum:
     """Augmentation (item_to_datum) - Dynamically modify item into datum.
 
     Clipping + DimensionExpansion
@@ -129,23 +129,22 @@ def augment(conf: ConfAugment, hoge_fuga: HogeFuga) -> HogeFugaDatum:
 
     # Dimension expansion
     ## :: (T,) -> (T, 1)
-    hoge_datum: HogeDatum = np.expand_dims(hoge, axis=-1) # pyright: ignore [reportUnknownMemberType] ; because of numpy
+    hoge_datum: ImageDatum = np.expand_dims(hoge, axis=-1) # pyright: ignore [reportUnknownMemberType] ; because of numpy
     ## :: (T,) -> (T, 1)
-    fuga_datum: FugaDatum = np.expand_dims(fuga, axis=-1) # pyright: ignore [reportUnknownMemberType]; because of numpy
+    fuga_datum: NumDatum = np.expand_dims(fuga, axis=-1) # pyright: ignore [reportUnknownMemberType]; because of numpy
 
     return hoge_datum, fuga_datum
 
 ###################################################################################################################################
 # [collation]
 
-def collate(datums: list[HogeFugaDatum]) -> HogeFugaBatch:
+def collate(datums: list[ImageNumDatum]) -> ImageNumBatch:
     """Collation (datum_to_batch) - Bundle multiple datum into a batch."""
 
-    hoge_batched: HogeBatched = stack([from_numpy(datum[0]) for datum in datums])
-    fuga_batched: FugaBatched = stack([from_numpy(datum[1]) for datum in datums])
-    len_fuga: LenFuga = [datum[1].shape[0] for datum in datums]
+    hoge_batched: ImageBatched = stack([from_numpy(datum[0]) for datum in datums])
+    fuga_batched: NumBatched = stack([from_numpy(datum[1]) for datum in datums])
 
-    return hoge_batched, fuga_batched, len_fuga
+    return hoge_batched, fuga_batched
 
 ###################################################################################################################################
 

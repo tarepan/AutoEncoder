@@ -40,13 +40,13 @@ data:
     adress_data_root: ""
     corpus:
         train:
-            name: "TEST"
+            name: "MNIST"
             download: False
         val:
-            name: "TEST"
+            name: "MNIST"
             download: False
         test:
-            name: "TEST"
+            name: "MNIST"
             download: False
         n_val: 1
         n_test: 1
@@ -54,7 +54,7 @@ data:
         attr1: 1
         transform: "${transform}"
     loader:
-        batch_size_train: 1
+        batch_size_train: 100
         batch_size_val: 1
         batch_size_test: 1
         num_workers: null

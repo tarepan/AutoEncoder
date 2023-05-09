@@ -27,10 +27,15 @@ transform:
         len_clip: 10
 model:
     net:
-        dim_i: 1
-        dim_o: 1
-        child:
-            dropout: 0.5
+        feat_io: 784
+        feat_z: 20
+        channel_io: 1
+        width_io: 28
+        height_io: 28
+        encoder:
+            feat_h: 100
+        decoder:
+            feat_h: 100
     optim:
         learning_rate: 0.01
         sched_decay_rate: 0.01
@@ -41,13 +46,13 @@ data:
     corpus:
         train:
             name: "MNIST"
-            download: False
+            download: True
         val:
             name: "MNIST"
-            download: False
+            download: True
         test:
             name: "MNIST"
-            download: False
+            download: True
         n_val: 1
         n_test: 1
     dataset:

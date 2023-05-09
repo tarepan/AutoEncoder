@@ -1,12 +1,12 @@
 """Data transformation"""
 
-
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 from omegaconf import MISSING
-from torch import from_numpy, stack # pyright: ignore [reportUnknownVariableType] ; because of PyTorch ; pylint: disable=no-name-in-module
+from torch import Tensor, from_numpy, stack, flatten # pyright: ignore [reportUnknownVariableType] ; because of PyTorch ; pylint: disable=no-name-in-module
 
 from ..domain import NumBatched, ImageBatched, ImageNumBatch
 from .domain import NumDatum, ImageDatum, ImageNum, ImageNumDatum, Image, Num, Fuga
@@ -104,6 +104,24 @@ def preprocess(conf: ConfPreprocess, raw: Image) -> ImageNum:
 
 ###################################################################################################################################
 # [Augmentation]
+
+def flatten3dim() -> Callable[[Tensor], Tensor]:
+    """Flatten last three dimensions."""
+    return lambda ipt: flatten(ipt, start_dim=-3, end_dim=-1)
+
+
+def inv_flatten3dim(channel: int, width: int, height: int) -> Callable[[Tensor], Tensor]:
+    """Inverse of flatten last three dimensions."""
+    func: Callable[[Tensor], Tensor] = lambda ipt: ipt.view(*ipt.size()[:-1], channel, width, height)
+    return func
+
+
+def test_flatten3dim():
+    i = torch.tensor([[[[1, 2, 3,], [4, 5, 6,]]], [[[11, 12, 13,], [14, 15, 16,]]]])
+    o = inv_flatten3dim(1,2,3)(flatten3dim()(i))
+    assert torch.equal(i, o)
+    print(o)
+
 
 @dataclass
 class ConfAugment:

@@ -3,10 +3,12 @@
 
 from dataclasses import dataclass
 
+import torch
+import torchvision as tv                       # pyright: ignore [reportMissingTypeStubs]; bacause of library
 from omegaconf import MISSING, SI
 from speechcorpusy.interface import ConfCorpus # pyright: ignore [reportMissingTypeStubs]; bacause of library
-import torchvision as tv                       # pyright: ignore [reportMissingTypeStubs]; bacause of library
-import torch
+
+from .transform import flatten3dim
 
 
 @dataclass
@@ -41,8 +43,9 @@ def prepare_corpora(conf: ConfCorpora) -> tuple[torch.utils.data.Dataset, torch.
     assert conf.train.name == "MNIST", f"Currently not supporting '{conf.train.name}' corpus."
     assert conf.val.name   == "MNIST", f"Currently not supporting '{conf.train.name}' corpus."
     assert conf.test.name  == "MNIST", f"Currently not supporting '{conf.train.name}' corpus."
-    corpus_train   = tv.datasets.MNIST(root=conf.train.root, train=True,  download=conf.train.download, transform=tv.transforms.ToTensor())
-    corpus_valtest = tv.datasets.MNIST(root=conf.val.root,   train=False, download=conf.val.download,   transform=tv.transforms.ToTensor())
+    to_flatten_tensor = tv.transforms.Compose([tv.transforms.ToTensor(), flatten3dim()])
+    corpus_train   = tv.datasets.MNIST(root=conf.train.root, train=True,  download=conf.train.download, transform=to_flatten_tensor)
+    corpus_valtest = tv.datasets.MNIST(root=conf.val.root,   train=False, download=conf.val.download,   transform=to_flatten_tensor)
 
     # Split
     #                                                 label  0    1    2    3    4    5    6    7    8    9

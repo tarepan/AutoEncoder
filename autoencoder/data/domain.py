@@ -21,7 +21,7 @@ ImageNum = tuple[Image, Num]
 ImageNum_: ImageNum = (Num_, Fuga_)
 
 # Dynamically-transformed Dataset datum
-## ImageDatum :: (C=1, W, H) - Gray image
+## ImageDatum :: (C*W*H,) - Gray image
 ImageDatum = NDArray[np.float32]
 ## NumDatum :: (1,) - Number of image, 0~9
 NumDatum = NDArray[np.float32]

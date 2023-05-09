@@ -9,52 +9,79 @@ from omegaconf import MISSING
 
 
 @dataclass
-class ConfChild:
-    """Configuration of the Child sub-module.
-    Args:
-        dim_i: Dimension size of input
-        dim_o: Dimension size of output
-        dropout: Dropout rate (0 means No-dropout)
-    """
-    dim_i: int = MISSING
-    dim_o: int = MISSING
-    dropout: float = MISSING
+class ConfEncoderFC:
+    """Configuration of EncoderFC"""
+    feat_i: int = MISSING # Feature dimension size of input
+    feat_h: int = MISSING # Feature dimension size of hidden layer
+    feat_o: int = MISSING # Feature dimension size of output
 
-class Child(nn.Module):
-    """The Network.
-    """
-    def __init__(self, conf: ConfChild):
-        super().__init__()
+class EncoderFC(nn.Module):
+    """The Fully-Connected Encoder, [FC-ReLU]x3"""
+    def __init__(self, conf: ConfEncoderFC):
+        super().__init__() # pyright: ignore [reportUnknownMemberType]; because of PyTorch
 
-        layers: list[nn.Module] = []
-        layers += [nn.Linear(conf.dim_i, conf.dim_o), nn.ReLU()]
-        layers += [nn.Dropout(conf.dropout)] if conf.dropout > 0. else []
-        self.fc1 = nn.Sequential(*layers)
+        self.net = nn.Sequential(*[
+            nn.Linear(conf.feat_i, conf.feat_h), nn.ReLU(),
+            nn.Linear(conf.feat_h, conf.feat_h), nn.ReLU(),
+            nn.Linear(conf.feat_h, conf.feat_o), nn.ReLU(),
+        ])
 
-    # Typing of PyTorch forward API is poor.
     def forward(self, i_pred: Tensor) -> Tensor: # pyright: ignore [reportIncompatibleMethodOverride]
         """(PT API) Forward a batch.
 
         Arguments:
-            i_pred :: (Batch, T, Feat=dim_i) - Input
+            i_pred :: (B, Feat) - Input
         Returns:
-            o_pred :: (Batch, T, Feat=dim_o) - Prediction
+                   :: (B, Feat) - Latent representation
         """
-        # :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        o_pred = self.fc1(i_pred)
-
-        return o_pred
+        return self.net(i_pred)
 
     def generate(self, i_pred: Tensor) -> Tensor:
         """Run inference with a batch.
 
         Arguments:
-            i_pred :: (Batch, T, Feat=dim_i) - Input
+            i_pred :: (B, Feat) - Input
         Returns:
-            o_pred :: (Batch, T, Feat=dim_o) - Prediction
+                   :: (B, Feat) - Latent representation
         """
+        return self.forward(i_pred)
 
-        # :: (Batch, T, Feat=dim_i) -> (Batch, T, Feat=dim_o)
-        o_pred = self.fc1(i_pred)
 
-        return o_pred
+# class ConfChild:
+@dataclass
+class ConfDecoderFC:
+    """Configuration of EncoderFC"""
+    feat_i: int = MISSING # Feature dimension size of input
+    feat_h: int = MISSING # Feature dimension size of hidden layer
+    feat_o: int = MISSING # Feature dimension size of output
+
+class DecoderFC(nn.Module):
+    """The Fully-Connected Decoder, [FC-ReLU]x3"""
+    def __init__(self, conf: ConfDecoderFC):
+        super().__init__() # pyright: ignore [reportUnknownMemberType]; because of PyTorch
+
+        self.net = nn.Sequential(*[
+            nn.Linear(conf.feat_i, conf.feat_h), nn.ReLU(),
+            nn.Linear(conf.feat_h, conf.feat_h), nn.ReLU(),
+            nn.Linear(conf.feat_h, conf.feat_o), nn.ReLU(),
+        ])
+
+    def forward(self, i_pred: Tensor) -> Tensor: # pyright: ignore [reportIncompatibleMethodOverride]
+        """(PT API) Forward a batch.
+
+        Arguments:
+            i_pred :: (B, Feat) - Latent representation
+        Returns:
+                   :: (B, Feat) - Reconstructed input
+        """
+        return self.net(i_pred)
+
+    def generate(self, i_pred: Tensor) -> Tensor:
+        """Run inference with a batch.
+
+        Arguments:
+            i_pred :: (B, Feat) - Latent representation
+        Returns:
+                   :: (B, Feat) - Reconstructed input
+        """
+        return self.forward(i_pred)

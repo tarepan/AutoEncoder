@@ -71,7 +71,7 @@ class Model(L.LightningModule):
         """(PL API) Validate the model with a batch.
         """
 
-        image_gt, _ = batch
+        image_gt, num_gt = batch
 
         # Forward :: (B, C*W*H) -> (B, C*W*H)
         image_pred = self.net(image_gt)
@@ -82,7 +82,7 @@ class Model(L.LightningModule):
 
         # Logging
         grid = tv.utils.make_grid(image_pred_unflatten)
-        self.logger.experiment.add_image('Reconstructed', grid, 0)
+        self.logger.experiment.add_image(f"Reconstructed {num_gt.item()}", grid, global_step=self.global_step)
 
         return {
             "val_loss": loss_fwd,
